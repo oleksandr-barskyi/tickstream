@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { displaySymbol, formatCompact, formatPercent, formatPrice } from '../core/format';
-import { Ticker } from '../stream/types';
+import { Ticker, displayPrice } from '../stream/types';
 import { ROW_HEIGHT, colors, spacing } from './theme';
 
 interface Props {
@@ -20,18 +20,19 @@ const FLASH_IN_MS = 90;
 const FLASH_OUT_MS = 420;
 
 function TickerRowComponent({ ticker, onPress }: Props) {
-  const previous = useRef(ticker.last);
+  const price = displayPrice(ticker);
+  const previous = useRef(price);
   const flash = useSharedValue(0);
 
   useEffect(() => {
-    const direction = ticker.last > previous.current ? 1 : ticker.last < previous.current ? -1 : 0;
-    previous.current = ticker.last;
+    const direction = price > previous.current ? 1 : price < previous.current ? -1 : 0;
+    previous.current = price;
     if (direction === 0) return;
     flash.value = withSequence(
       withTiming(direction, { duration: FLASH_IN_MS }),
       withTiming(0, { duration: FLASH_OUT_MS }),
     );
-  }, [ticker.last, flash]);
+  }, [price, flash]);
 
   const flashStyle = useAnimatedStyle(() => {
     const intensity = Math.abs(flash.value) * 0.22;
@@ -57,7 +58,7 @@ function TickerRowComponent({ ticker, onPress }: Props) {
           <Text style={styles.volume}>vol {formatCompact(ticker.quoteVolume)}</Text>
         </View>
         <View style={styles.right}>
-          <Text style={styles.price}>{formatPrice(ticker.last)}</Text>
+          <Text style={styles.price}>{formatPrice(price)}</Text>
           <Text style={[styles.change, { color: up ? colors.up : colors.down }]}>
             {formatPercent(ticker.changePercent)}
           </Text>
@@ -71,6 +72,8 @@ function areEqual(prev: Props, next: Props): boolean {
   return (
     prev.ticker.symbol === next.ticker.symbol &&
     prev.ticker.last === next.ticker.last &&
+    prev.ticker.bid === next.ticker.bid &&
+    prev.ticker.ask === next.ticker.ask &&
     prev.ticker.changePercent === next.ticker.changePercent &&
     prev.ticker.quoteVolume === next.ticker.quoteVolume &&
     prev.onPress === next.onPress

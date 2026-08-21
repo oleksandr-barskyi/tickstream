@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BatchStats, createBatcher } from '../core/batcher';
-import { parseEnvelope, parseTicker, tickerStreamUrl } from './binance';
-import { Ticker } from './types';
+import { parseBookPatch, parseEnvelope, parseTicker, tickerStreamUrl } from './binance';
+import { Ticker, mergeTicker } from './types';
 import { useSocket } from './useSocket';
 
 export type RenderMode = 'batched' | 'naive';
@@ -26,6 +26,7 @@ export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
   });
 
   const batcher = useMemo(() => createBatcher<Ticker>((t) => t.symbol), []);
+  const latest = useRef<Record<string, Ticker>>({});
   const modeRef = useRef(mode);
 
   useEffect(() => {
@@ -40,14 +41,20 @@ export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
     (raw: string) => {
       const envelope = parseEnvelope(raw);
       if (envelope === null) return;
-      const ticker = parseTicker(envelope.data);
-      if (ticker === null) return;
+
+      const patch = envelope.stream.endsWith('@bookTicker')
+        ? parseBookPatch(envelope.data)
+        : parseTicker(envelope.data);
+      if (patch === null) return;
+
+      const merged = mergeTicker(latest.current[patch.symbol], patch);
+      latest.current[patch.symbol] = merged;
 
       if (modeRef.current === 'naive') {
-        setTickers((current) => ({ ...current, [ticker.symbol]: ticker }));
+        setTickers((current) => ({ ...current, [merged.symbol]: merged }));
         return;
       }
-      batcher.push(ticker);
+      batcher.push(merged);
     },
     [batcher],
   );

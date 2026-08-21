@@ -8,9 +8,9 @@ import {
 } from '../src/stream/binance';
 
 describe('stream urls', () => {
-  it('builds a combined ticker stream', () => {
+  it('subscribes each symbol to both the slow ticker and the fast book top', () => {
     expect(tickerStreamUrl(['btcusdt', 'ethusdt'])).toBe(
-      'wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker',
+      'wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/btcusdt@bookTicker/ethusdt@ticker/ethusdt@bookTicker',
     );
   });
 
@@ -53,11 +53,15 @@ describe('parseTicker', () => {
       symbol: 'BTCUSDT',
       last: 64000.1,
       changePercent: -1.25,
-      high: 65000,
-      low: 63000,
       quoteVolume: 1250000000.5,
       at: 1_700_000_000_000,
     });
+  });
+
+  it('does not carry bid or ask, so a slow ticker cannot erase a fresh book top', () => {
+    const ticker = parseTicker(raw);
+    expect(ticker).not.toHaveProperty('bid');
+    expect(ticker).not.toHaveProperty('ask');
   });
 
   it('rejects a payload without a price', () => {
@@ -68,10 +72,8 @@ describe('parseTicker', () => {
     expect(parseTicker({ ...raw, c: 'n/a' })).toBeNull();
   });
 
-  it('falls back to the last price when the high and low are missing', () => {
-    const ticker = parseTicker({ ...raw, h: undefined, l: undefined });
-    expect(ticker?.high).toBe(64000.1);
-    expect(ticker?.low).toBe(64000.1);
+  it('defaults volume to zero rather than dropping the message', () => {
+    expect(parseTicker({ ...raw, q: undefined })?.quoteVolume).toBe(0);
   });
 });
 

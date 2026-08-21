@@ -25,6 +25,16 @@ rate the data arrives and the rate a screen can usefully repaint.
 
 ## See it happen
 
+Same data, same components, same device. One switch.
+
+| Batched | Naive |
+| --- | --- |
+| ![batched](docs/batched.png) | ![naive](docs/naive.png) |
+| **63 fps.** 28,010 messages became 2,977 renders, 89% dropped as superseded | **23 fps.** One `setState` per message |
+
+Those numbers are from a desktop browser, which is the friendly case. The gap is
+wider on a phone.
+
 The header has a **Batched / Naive** switch and a live FPS counter.
 
 - **Batched** is the real implementation. Updates are coalesced per symbol and

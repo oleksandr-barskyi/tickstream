@@ -7,9 +7,9 @@ function ticker(overrides: Partial<Ticker> = {}): Ticker {
   return {
     symbol: 'BTCUSDT',
     last: 64000.12,
+    bid: null,
+    ask: null,
     changePercent: 1.25,
-    high: 65000,
-    low: 63000,
     quoteVolume: 2_500_000_000,
     at: 1_700_000_000_000,
     ...overrides,
@@ -37,6 +37,11 @@ describe('TickerRow', () => {
   it('shortens the quote volume', async () => {
     const { getByText } = await renderRow();
     expect(getByText('vol 2.5B')).toBeTruthy();
+  });
+
+  it('prefers the mid of the book over the last trade once both sides arrive', async () => {
+    const { getByText } = await renderRow({ bid: 100, ask: 102 });
+    expect(getByText('101.000')).toBeTruthy();
   });
 
   it('does not print NaN when the feed sends a broken price', async () => {

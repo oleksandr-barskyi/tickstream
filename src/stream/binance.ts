@@ -11,7 +11,7 @@ export const SYMBOLS = [
 ];
 
 export function tickerStreamUrl(symbols: string[]): string {
-  const streams = symbols.map((s) => `${s}@ticker`).join('/');
+  const streams = symbols.flatMap((s) => [`${s}@ticker`, `${s}@bookTicker`]).join('/');
   return `${WS_BASE}?streams=${streams}`;
 }
 
@@ -27,7 +27,9 @@ function num(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function parseTicker(payload: unknown): Ticker | null {
+export type TickerPatch = Partial<Ticker> & { symbol: string };
+
+export function parseTicker(payload: unknown): TickerPatch | null {
   if (typeof payload !== 'object' || payload === null) return null;
   const d = payload as Record<string, unknown>;
 
@@ -40,11 +42,15 @@ export function parseTicker(payload: unknown): Ticker | null {
     symbol,
     last,
     changePercent,
-    high: num(d.h) ?? last,
-    low: num(d.l) ?? last,
     quoteVolume: num(d.q) ?? 0,
     at: num(d.E) ?? Date.now(),
   };
+}
+
+export function parseBookPatch(payload: unknown): TickerPatch | null {
+  const top = parseBookTop(payload);
+  if (top === null) return null;
+  return { symbol: top.symbol, bid: top.bid, ask: top.ask };
 }
 
 export function parseTrade(payload: unknown): Trade | null {
