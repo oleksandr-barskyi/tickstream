@@ -16,7 +16,7 @@ interface TickerFeed {
   stats: BatchStats;
 }
 
-export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
+export function useTickers(symbols: string[], mode: RenderMode, running = true): TickerFeed {
   const [tickers, setTickers] = useState<Record<string, Ticker>>({});
   const [stats, setStats] = useState<BatchStats>({
     received: 0,
@@ -35,7 +35,10 @@ export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
     setStats(batcher.stats());
   }, [mode, batcher]);
 
-  const url = useMemo(() => tickerStreamUrl(symbols), [symbols]);
+  const url = useMemo(
+    () => (running ? tickerStreamUrl(symbols) : null),
+    [symbols, running],
+  );
 
   const onMessage = useCallback(
     (raw: string) => {
@@ -62,7 +65,7 @@ export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
   const { status, reconnects } = useSocket(url, onMessage);
 
   useEffect(() => {
-    if (mode !== 'batched') return;
+    if (!running || mode !== 'batched') return;
 
     const timer = setInterval(() => {
       const batch = batcher.flush();
@@ -76,7 +79,7 @@ export function useTickers(symbols: string[], mode: RenderMode): TickerFeed {
     }, FLUSH_INTERVAL_MS);
 
     return () => clearInterval(timer);
-  }, [mode, batcher]);
+  }, [mode, batcher, running]);
 
   const list = useMemo(
     () => Object.values(tickers).sort((a, b) => b.quoteVolume - a.quoteVolume),

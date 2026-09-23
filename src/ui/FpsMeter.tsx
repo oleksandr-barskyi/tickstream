@@ -5,12 +5,17 @@ import { colors, spacing } from './theme';
 
 const SAMPLE_MS = 500;
 
-export function useFps(): number {
+export function useFps(active: boolean): number {
   const [fps, setFps] = useState(60);
   const frames = useRef(0);
   const since = useRef(Date.now());
 
   useEffect(() => {
+    if (!active) return;
+
+    frames.current = 0;
+    since.current = Date.now();
+
     let handle: number;
 
     const tick = () => {
@@ -26,7 +31,7 @@ export function useFps(): number {
 
     handle = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(handle);
-  }, []);
+  }, [active]);
 
   return fps;
 }
@@ -37,11 +42,13 @@ function tone(fps: number): string {
   return colors.down;
 }
 
-export function FpsMeter({ label }: { label?: string }) {
-  const fps = useFps();
+export function FpsMeter({ label, active = true }: { label?: string; active?: boolean }) {
+  const fps = useFps(active);
   return (
     <View style={styles.pill}>
-      <Text style={[styles.value, { color: tone(fps) }]}>{fps}</Text>
+      <Text style={[styles.value, { color: active ? tone(fps) : colors.textMuted }]}>
+        {active ? fps : '--'}
+      </Text>
       <Text style={styles.unit}>{label ?? 'fps'}</Text>
     </View>
   );

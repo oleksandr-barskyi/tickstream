@@ -12,6 +12,8 @@ interface Props {
   status: StreamStatus;
   stats: BatchStats;
   symbolCount: number;
+  running: boolean;
+  onRunningChange: (running: boolean) => void;
 }
 
 const STATUS_LABEL: Record<StreamStatus, string> = {
@@ -28,7 +30,15 @@ const STATUS_COLOR: Record<StreamStatus, string> = {
   closed: colors.down,
 };
 
-export function ModeBar({ mode, onModeChange, status, stats, symbolCount }: Props) {
+export function ModeBar({
+  mode,
+  onModeChange,
+  status,
+  stats,
+  symbolCount,
+  running,
+  onRunningChange,
+}: Props) {
   const saved =
     stats.received === 0 ? 0 : Math.round((stats.coalesced / stats.received) * 100);
 
@@ -36,12 +46,29 @@ export function ModeBar({ mode, onModeChange, status, stats, symbolCount }: Prop
     <View style={styles.wrap}>
       <View style={styles.topRow}>
         <View style={styles.statusPill}>
-          <View style={[styles.dot, { backgroundColor: STATUS_COLOR[status] }]} />
+          <View
+            style={[
+              styles.dot,
+              { backgroundColor: running ? STATUS_COLOR[status] : colors.textMuted },
+            ]}
+          />
           <Text style={styles.statusText}>
-            {STATUS_LABEL[status]} · {symbolCount} symbols
+            {running ? STATUS_LABEL[status] : 'stopped'} · {symbolCount} symbols
           </Text>
         </View>
-        <FpsMeter />
+        <View style={styles.topRight}>
+          <FpsMeter active={running} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={running ? 'Stop the stream' : 'Start the stream'}
+            onPress={() => onRunningChange(!running)}
+            style={[styles.runButton, running ? styles.runButtonStop : styles.runButtonStart]}
+          >
+            <Text style={[styles.runText, running ? styles.runTextStop : styles.runTextStart]}>
+              {running ? 'Stop' : 'Start'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.switch}>
@@ -68,9 +95,11 @@ export function ModeBar({ mode, onModeChange, status, stats, symbolCount }: Prop
       </View>
 
       <Text style={styles.explain}>
-        {mode === 'batched'
-          ? `Updates coalesced per symbol and committed every 100ms. ${stats.received} messages became ${stats.emitted} renders, ${saved}% dropped as superseded.`
-          : 'One setState per message, no coalescing. This is the version that looks fine on a laptop and stutters on a phone.'}
+        {!running
+          ? `Stopped. The socket is closed, the flush timer is cleared and the frame counter is not running, so this tab costs nothing. Last reading: ${stats.received} messages became ${stats.emitted} renders.`
+          : mode === 'batched'
+            ? `Updates coalesced per symbol and committed every 100ms. ${stats.received} messages became ${stats.emitted} renders, ${saved}% dropped as superseded.`
+            : 'One setState per message, no coalescing. This is the version that looks fine on a laptop and stutters on a phone.'}
       </Text>
     </View>
   );
@@ -94,6 +123,35 @@ const styles = StyleSheet.create({
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  runButton: {
+    marginLeft: spacing.sm,
+    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+  },
+  runButtonStop: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.down,
+  },
+  runButtonStart: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  runText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  runTextStop: {
+    color: colors.down,
+  },
+  runTextStart: {
+    color: colors.background,
   },
   dot: {
     width: 8,

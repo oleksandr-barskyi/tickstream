@@ -12,7 +12,8 @@ import { ROW_HEIGHT, colors, spacing } from '../src/ui/theme';
 export default function FeedScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<RenderMode>('batched');
-  const { tickers, status, stats } = useTickers(SYMBOLS, mode);
+  const [running, setRunning] = useState(true);
+  const { tickers, status, stats } = useTickers(SYMBOLS, mode, running);
 
   const openSymbol = useCallback(
     (symbol: string) => router.push({ pathname: '/symbol/[id]', params: { id: symbol } }),
@@ -43,13 +44,19 @@ export default function FeedScreen() {
         status={status}
         stats={stats}
         symbolCount={SYMBOLS.length}
+        running={running}
+        onRunningChange={setRunning}
       />
       {tickers.length === 0 ? (
         <View style={styles.empty}>
-          <ActivityIndicator color={colors.accent} />
-          <Text style={styles.emptyTitle}>Waiting for the first tick</Text>
+          {running ? <ActivityIndicator color={colors.accent} /> : null}
+          <Text style={styles.emptyTitle}>
+            {running ? 'Waiting for the first tick' : 'Stream stopped'}
+          </Text>
           <Text style={styles.emptyHint}>
-            Connecting to the public Binance stream. No API key is involved.
+            {running
+              ? 'Connecting to the public Binance stream. No API key is involved.'
+              : 'Press Start to open the connection. Nothing is running until you do.'}
           </Text>
         </View>
       ) : (
